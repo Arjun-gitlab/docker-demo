@@ -24,6 +24,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: false # keep local, change to true if pushing to registry
+          load: true
           tags: my-nginx:latest
  
       # Step 4: Run container (instead of docker run)
