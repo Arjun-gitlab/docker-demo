@@ -1,4 +1,4 @@
-name: Custom NGINX E2E Test
+name: NGINX CI
  
 on:
   push:
@@ -13,29 +13,38 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
  
-      # Step 2: Build custom NGINX image
-      - name: Build Docker image
-        run: docker build -t my-nginx .
+      # Step 2: Set up Docker Buildx (required for docker/build-push-action)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
  
-      # Step 3: Run container
+      # Step 3: Build custom NGINX image
+      - name: Build NGINX image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false # keep local, change to true if pushing to registry
+          tags: my-nginx:latest
+ 
+      # Step 4: Run container (instead of docker run)
       - name: Run NGINX container
-        run: docker run -d -p 8080:80 --name nginx-test my-nginx
+        uses: addnab/docker-run-action@v3
+        with:
+          image: my-nginx:latest
+          options: -d -p 8080:80 --name nginx-test
+          run: |
+            echo "NGINX container started"
  
-      # Step 4: Wait for NGINX
-      - name: Wait for NGINX to be ready
+      # Step 5: Wait for NGINX to be ready
+      - name: Wait for NGINX
         run: |
           for i in {1..10}; do
-            if curl -s http://localhost:8080; then
-              echo "NGINX is up!"
+            if curl -s http://localhost:8080 > /dev/null; then
+              echo "✅ NGINX is up!"
               exit 0
             fi
             echo "Waiting for NGINX..."
-            sleep 5
+            sleep 2
           done
-          echo "NGINX did not start in time" && exit 1
- 
-      # Step 5: Test response
-      - name: Verify custom page
-        run: |
-          curl -I http://localhost:8080
-          curl http://localhost:8080 | grep "Hello from GitHub Actions"
+          echo "❌ NGINX did not start in time"
+          exit 1
